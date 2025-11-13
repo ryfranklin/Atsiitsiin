@@ -1,6 +1,6 @@
 # Atsiitsʼiin – An Agentic Second Brain
 
-Atsiitsʼiin (Navajo: "the head") is a personal knowledge agent that captures, organizes, and retrieves your ideas using LLMs and semantic memory on Snowflake. It follows agentic design and the GAME architecture (Goal, Abilities, Memory, Environment).
+Atsiitsʼiin (Navajo: "the head") is a personal knowledge agent that captures, organizes, and retrieves your ideas using LLMs and semantic memory on Snowflake. It follows agentic design and the GAIL architecture (Goal, Abilities, Implementation, Learning).
 
 Overview
 
@@ -10,14 +10,14 @@ Overview
 - Summarize your thinking over **time**
 - Connect related entries for deeper insight
 
-GAME Architecture
+GAIL Framework
 
 | Component | Description |
 |----------|-------------|
 | Goal | Support external thinking and long-term memory |
 | Abilities | Capture, categorize, summarize, recall, and suggest |
-| Memory | Embeddings + metadata stored in Snowflake |
-| Environment | CLI (example script) |
+| Implementation | Snowflake memory store + FastAPI/Streamlit surfaces |
+| Learning | Feedback loops via tagging, sentiment/context updates |
 
 Project Structure
 
