@@ -6,6 +6,7 @@ import html
 import logging
 import os
 import re
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -791,6 +792,134 @@ def render_notes_list() -> None:
     st.caption(f"Showing {len(notes)} of {total} notes.")
 
 
+def _context_color(label: str) -> str:
+    mapping = {
+        "work": "#0070c9",
+        "personal": "#9b59b6",
+        "leisure": "#2ecc71",
+        "mixed": "#e67e22",
+        "unknown": "#7f8c8d",
+        "pending": "#bdc3c7",
+    }
+    key = _normalize_context_key(label)
+    return mapping.get(key, "#34495e")
+
+
+def _escape_graphviz_text(value: str) -> str:
+    return (
+        value.replace("\\", "\\\\")
+        .replace("\"", r"\"")
+        .replace("\n", "\\n")
+        .strip()
+    )
+
+
+def _collect_shared_tags(notes: Iterable[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    tags_map: dict[str, list[dict[str, Any]]] = {}
+    for note in notes:
+        tags = note.get("tags") or []
+        for tag in tags:
+            tag_value = tag.get("TAG") or tag.get("tag")
+            if isinstance(tag_value, str) and tag_value.strip():
+                normalized = tag_value.strip().lower()
+                tags_map.setdefault(normalized, []).append(note)
+    return {tag: items for tag, items in tags_map.items() if len(items) >= 2}
+
+
+def _prepare_graph_nodes(
+    notes: Iterable[dict[str, Any]],
+) -> tuple[dict[str, str], dict[str, str]]:
+    node_labels: dict[str, str] = {}
+    node_colors: dict[str, str] = {}
+    for note in notes:
+        note_id = str(note.get("note_id") or "")
+        if not note_id:
+            continue
+        title = note.get("title") or "Untitled"
+        context_label = note.get("context_label") or note.get("sentiment_label") or "pending"
+        confidence = note.get("context_confidence")
+        if confidence is None:
+            confidence = note.get("sentiment_score")
+        context_summary = _format_context_summary(context_label, confidence)
+        label_text = f"{title[:40]}{'…' if len(title) > 40 else ''}\\n{context_summary}"
+        node_labels[note_id] = _escape_graphviz_text(label_text)
+        node_colors[note_id] = _context_color(context_label)
+    return node_labels, node_colors
+
+
+def _generate_edges(shared_tags: dict[str, list[dict[str, Any]]]) -> set[tuple[str, str]]:
+    edges: set[tuple[str, str]] = set()
+    for tag_notes in shared_tags.values():
+        for i in range(len(tag_notes)):
+            for j in range(i + 1, len(tag_notes)):
+                first = str(tag_notes[i].get("note_id") or "")
+                second = str(tag_notes[j].get("note_id") or "")
+                if first and second and first != second:
+                    edge = (first, second) if first < second else (second, first)
+                    edges.add(edge)
+    return edges
+
+
+def _build_relationship_graph(
+    notes: list[dict[str, Any]],
+) -> tuple[str | None, list[dict[str, Any]]]:
+    shared_tags = _collect_shared_tags(notes)
+    if not shared_tags:
+        return None, []
+
+    node_labels, node_colors = _prepare_graph_nodes(notes)
+    edges = _generate_edges(shared_tags)
+
+    if not edges:
+        return None, []
+
+    dot_lines: list[str] = [
+        "digraph NotesGraph {",
+        "  graph [splines=true overlap=false fontname=\"Helvetica\"];",
+        "  node [shape=box style=filled fontname=\"Helvetica\" fontsize=12];",
+    ]
+
+    for node_id, label in node_labels.items():
+        color = node_colors.get(node_id, "#34495e")
+        dot_lines.append(f'  "{node_id}" [label="{label}" fillcolor="{color}" fontcolor="#ffffff"];')
+
+    for source, target in edges:
+        dot_lines.append(f'  "{source}" -> "{target}" [dir=both color="#95a5a6"];')
+
+    dot_lines.append("}")
+
+    tag_summary = [
+        {"Tag": tag, "Notes": len(tag_notes)}
+        for tag, tag_notes in sorted(shared_tags.items(), key=lambda item: len(item[1]), reverse=True)
+    ]
+    return "\n".join(dot_lines), tag_summary
+
+def render_relations() -> None:
+    st.subheader("Note Relationship Graph")
+    max_notes = st.slider("Notes to consider", min_value=20, max_value=200, value=100, step=10)
+    summary = get_notes(limit=max_notes, offset=0)
+    notes: list[dict[str, Any]] = summary["notes"]
+
+    if not notes:
+        st.info("No notes available to visualize yet.")
+        return
+
+    st.caption(
+        "Nodes represent notes coloured by context. Edges connect notes that share at least one tag."
+    )
+
+    dot_graph, tag_summary = _build_relationship_graph(notes)
+    if not dot_graph:
+        st.warning("Not enough shared tags between notes to build a relationship graph.")
+        return
+
+    st.graphviz_chart(dot_graph, use_container_width=True)
+
+    if tag_summary:
+        st.markdown("#### Shared Tags")
+        st.dataframe(tag_summary, use_container_width=True, hide_index=True)
+
+
 def render_search() -> None:
     st.subheader("Semantic Search")
     query = st.session_state.get("search_query", "")
@@ -1356,7 +1485,7 @@ def resolve_navigation() -> str:
     ):
         st.session_state["nav_view"] = st.session_state.get("nav_radio_value", "Dashboard")
 
-    nav_options = ["Dashboard", "Notes", "Context", "Activity"]
+    nav_options = ["Dashboard", "Notes", "Context", "Relations", "Activity"]
     selected, create_clicked, normalized_query = _render_sidebar_navigation(nav_options)
 
     previous_view = st.session_state.get("nav_view", "Dashboard")
@@ -1406,6 +1535,8 @@ def main() -> None:
         render_create_note()
     elif view == "Context":
         render_context()
+    elif view == "Relations":
+        render_relations()
     elif view == "Activity":
         render_activity()
 
