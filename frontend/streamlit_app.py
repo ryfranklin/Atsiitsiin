@@ -463,10 +463,12 @@ def _render_note_tags_remove_form(
         format_func=_format_label,
         key=remove_key,
     )
-    if st.button("Remove selected tags", key=f"note-tags-remove-btn-{note_id}"):
-        if not selected_remove:
-            st.warning("Select at least one tag to remove.")
-            return
+    remove_disabled = not selected_remove
+    if st.button(
+        "Remove selected tags",
+        key=f"note-tags-remove-btn-{note_id}",
+        disabled=remove_disabled,
+    ):
         with st.spinner("Removing tags..."):
             response = remove_tags_from_note(note_id, selected_remove)
         if response and response.get("tags") is not None:
@@ -546,7 +548,7 @@ def _collect_note_tags(
 def _render_note_delete_controls(note_id: str, note_title: str) -> None:
     confirm_key = f"delete-note-confirm-{note_id}"
     delete_confirm = st.checkbox(
-        "Confirm delete",
+        "🔒 Confirm delete",
         key=confirm_key,
         help="Check before deleting this note.",
     )
