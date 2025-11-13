@@ -1,0 +1,152 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atsiitsiin"
+version = "0.1.0"
+description = "Atsiitsʼiin is a Snowflake-backed second brain assistant."
+readme = "README.md"
+requires-python = ">=3.13"
+license = {text = "MIT"}
+authors = [
+    {name = "Ryan Franklin", email = "ryan.franklin@ms3dm.tech"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "litellm>=1.77.0",
+    "python-dotenv>=1.0.0",
+    "snowflake-snowpark-python>=1.11.0",
+    "pyyaml>=6.0.1",
+    "pydantic>=2.12.0",
+    "cryptography>=41.0.0",
+    "tomli-w>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "streamlit>=1.41.0",
+    "requests>=2.31.0",
+    "opentelemetry-api>=1.26.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.7.0",
+    "ruff>=0.0.285",
+    "bandit>=1.7.5",
+    "pre-commit>=3.3.3",
+    "jupyter>=1.0.0",
+    "ipython>=8.14.0",
+    "pyright>=1.1.390",
+    "coverage-badge>=1.1.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["atsiitsiin*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=atsiitsiin",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
+[tool.black]
+line-length = 79
+target-version = ['py313']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 79
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "BLE001",  # allow broad exception catches for agent tool execution
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+"notebooks/*.ipynb" = ["E402"]  # Allow imports after path manipulation
+"src/atsiitsiin/agents/agent.py" = ["BLE001"]
+
+[tool.bandit]
+exclude_dirs = [".venv", "venv", "env", "tests", "examples", "lessons/*/tests", "lessons/*/examples", "htmlcov", "__pycache__", "*.egg-info"]
+skips = ["B101", "B105", "B106", "B608"]  # Skip assert_used and hardcoded SQL/password checks for test files
+
+[tool.coverage.run]
+source = ["atsiitsiin"]
+omit = ["*/tests/*", "*/test_*.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "standard"
+reportMissingTypeStubs = false
+reportMissingImports = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportUnknownVariableType = false
+include = ["src/atsiitsiin", "backend", "frontend", "examples", "tests"]
+exclude = [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/node_modules",
+    ".venv",
+    "build",
+    "dist",
+]
+

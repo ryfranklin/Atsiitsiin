@@ -1,0 +1,76 @@
+services:
+  # Development environment
+  dev:
+    build:
+      context: .
+      target: development
+    volumes:
+      - .:/app
+      - /app/.venv  # Prevent mounting local venv
+    command: bash
+    stdin_open: true
+    tty: true
+
+  # Run all checks (linting + type checking + tests)
+  ci:
+    build:
+      context: .
+      target: development
+    volumes:
+      - .:/app
+    command: sh -c "ruff check . && pyright && pytest -v"
+
+  # Run tests only
+  test:
+    build:
+      context: .
+      target: testing
+    volumes:
+      - .:/app
+    command: pytest -v --cov=atsiitsiin --cov-report=term-missing
+
+  # Run tests with HTML coverage report
+  test-html:
+    build:
+      context: .
+      target: testing
+    volumes:
+      - .:/app
+    command: pytest -v --cov=atsiitsiin --cov-report=html --cov-report=term-missing
+
+  # Run linters only
+  lint:
+    build:
+      context: .
+      target: linting
+    volumes:
+      - .:/app
+    command: sh -c "ruff check . && pyright"
+
+  # Run ruff formatter
+  format:
+    build:
+      context: .
+      target: development
+    volumes:
+      - .:/app
+    command: sh -c "ruff format . && black ."
+
+  # Run pyright only
+  typecheck:
+    build:
+      context: .
+      target: linting
+    volumes:
+      - .:/app
+    command: pyright
+
+  # Run security checks
+  security:
+    build:
+      context: .
+      target: development
+    volumes:
+      - .:/app
+    command: bandit -r src/atsiitsiin -c pyproject.toml --exclude "**/tests/*,**/test_*.py"
+
